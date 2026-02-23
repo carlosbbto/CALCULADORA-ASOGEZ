@@ -1,7 +1,6 @@
 import streamlit as st
 import math
 import re
-import pandas as pd
 from streamlit_folium import st_folium
 import folium
 
@@ -62,11 +61,17 @@ class Geodesia:
         Nort = k0 * (M + N * math.tan(l_r) * (A**2/2))
         return E, Nort, zone
 
-# --- INTERFAZ ---
-st.set_page_config(page_title="CALCULADORA GEODESICA ASOGEZ", page_icon="🇻🇪")
+# --- INTERFAZ STREAMLIT ---
+st.set_page_config(page_title="GeoVZLA Pro", page_icon="🇻🇪")
+st.title("🇻🇪 GeoVZLA Pro")
+st.markdown("### Transformación con Visualización Exacta")
 
-st.title("CALCULADORA GEODESICA ASOGEZ")
-st.markdown("### Transformación con Visualización de Precisión")
+# 1. PREPARAR LA MEMORIA DE LA APP
+if 'mapa_lat' not in st.session_state:
+    st.session_state.mapa_lat = None
+    st.session_state.mapa_lon = None
+    st.session_state.mensaje_resultado = ""
+    st.session_state.tipo_resultado = ""
 
 menu = st.selectbox("Operación:", 
     ["Google Maps -> La Canoa (PSAD56)", 
@@ -79,49 +84,67 @@ with c1: lat_input = st.text_input("Latitud (N)", "10.4806")
 with c2: lon_input = st.text_input("Longitud (W)", "-66.9036")
 h_input = st.number_input("Altura (m)", value=0.0)
 
+# 2. CUANDO PRESIONAMOS EL BOTÓN, SOLO GUARDAMOS EN MEMORIA
 if st.button("CALCULAR Y UBICAR PUNTO"):
     lt = Geodesia.limpiar_coord(lat_input, 'LAT')
     ln = Geodesia.limpiar_coord(lon_input, 'LON')
     
     if lt and ln:
-        lat_mapa, lon_mapa = lt, ln
-        st.divider()
-        
-        # Lógica de cálculo (resumida para mostrar resultados)
+        # Lógica de cálculo
         if "La Canoa" in menu and "Google" in menu:
             r_lat, r_lon, r_h = Geodesia.transformar(lt, ln, h_input, inverso=False)
-            lat_mapa, lon_mapa = r_lat, r_lon
-            st.success(f"📍 REGVEN: {r_lat:.8f}, {r_lon:.8f}")
+            st.session_state.mapa_lat = r_lat
+            st.session_state.mapa_lon = r_lon
+            st.session_state.mensaje_resultado = f"📍 REGVEN: {r_lat:.8f}, {r_lon:.8f}"
+            st.session_state.tipo_resultado = "success"
+            
         elif "UTM" in menu:
             m_lat, m_lon = (lt, ln) if "Google" in menu else Geodesia.transformar(lt, ln, h_input, inverso=False)[:2]
-            lat_mapa, lon_mapa = m_lat, m_lon
+            st.session_state.mapa_lat = m_lat
+            st.session_state.mapa_lon = m_lon
             e, n, z = Geodesia.a_utm(m_lat, m_lon)
-            st.info(f"📐 UTM Zona {z}N | E: {e:,.3f} | N: {n:,.3f}")
+            st.session_state.mensaje_resultado = f"📐 UTM Zona {z}N | E: {e:,.3f} | N: {n:,.3f}"
+            st.session_state.tipo_resultado = "info"
+            
         else:
             r_lat, r_lon, _ = Geodesia.transformar(lt, ln, h_input, inverso=True)
-            st.success(f"📍 La Canoa: {r_lat:.8f}, {r_lon:.8f}")
+            st.session_state.mapa_lat = lt # El mapa se queda en WGS84 para poder mostrarlo
+            st.session_state.mapa_lon = ln
+            st.session_state.mensaje_resultado = f"📍 La Canoa: {r_lat:.8f}, {r_lon:.8f}"
+            st.session_state.tipo_resultado = "success"
+    else:
+        st.error("Coordenadas inválidas.")
 
-       # --- SECCIÓN DEL MAPA (CORREGIDA) ---
-        st.subheader("🗺️ Ubicación Exacta")
-        
-        # 1. Crear el objeto mapa
-        m = folium.Map(location=[lat_mapa, lon_mapa], zoom_start=18)
-        
-        # 2. Agregar Satélite de Google
-        folium.TileLayer(
-            tiles = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-            attr = 'Google Satellite',
-            name = 'Satélite',
-            overlay = False,
-            control = True
-        ).add_to(m)
+# 3. MOSTRAR LOS RESULTADOS Y EL MAPA SIEMPRE QUE HAYA ALGO EN LA MEMORIA
+if st.session_state.mapa_lat is not None:
+    st.divider()
+    
+    # Mostrar el mensaje guardado
+    if st.session_state.tipo_resultado == "success":
+        st.success(st.session_state.mensaje_resultado)
+    else:
+        st.info(st.session_state.mensaje_resultado)
 
-        # 3. Agregar el PIN (marcador pequeño y exacto)
-        folium.Marker(
-            [lat_mapa, lon_mapa],
-            popup=f"Lat: {lat_mapa:.6f}\nLon: {lon_mapa:.6f}",
-            icon=folium.Icon(color='red', icon='crosshairs', prefix='fa') # Icono de mira telescópica
-        ).add_to(m)
+    st.subheader("🗺️ Ubicación Exacta")
+    
+    # Crear el mapa con las coordenadas guardadas
+    m = folium.Map(location=[st.session_state.mapa_lat, st.session_state.mapa_lon], zoom_start=18, control_scale=True)
+    
+    folium.TileLayer(
+        tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        attr='Google',
+        name='Satélite',
+        overlay=False,
+        control=True
+    ).add_to(m)
 
-        # 4. Mostrar el mapa con una "llave" única (key) para evitar que desaparezca
-        st_folium(m, width=700, height=450, key="mapa_venezuela")
+    folium.Marker(
+        [st.session_state.mapa_lat, st.session_state.mapa_lon],
+        popup="Punto Calculado",
+        icon=folium.Icon(color='red', icon='info-sign')
+    ).add_to(m)
+
+    # El parámetro returned_objects=[] evita que el mapa recargue toda la página al hacerle clic
+    st_folium(m, width=700, height=450, returned_objects=[])
+
+st.caption("Desarrollado por la Asociación de Geomatica del Zulia(ASOGEZ).")
