@@ -1,9 +1,11 @@
 import streamlit as st
 import math
 import re
-import pandas as pd # Necesario para el mapa
+import pandas as pd
+from streamlit_folium import st_folium
+import folium
 
-# --- LÓGICA GEODÉSICA PROFESIONAL ---
+# --- MOTOR MATEMÁTICO GEODÉSICO ---
 class Geodesia:
     HAYFORD = {'a': 6378388.0, 'e2': 0.006722670022} 
     GRS80   = {'a': 6378137.0, 'e2': 0.006694380023}   
@@ -60,65 +62,4 @@ class Geodesia:
         Nort = k0 * (M + N * math.tan(l_r) * (A**2/2))
         return E, Nort, zone
 
-# --- INTERFAZ STREAMLIT ---
-st.set_page_config(page_title="GeoVZLA Pro", page_icon="🇻🇪", layout="centered")
-
-st.title("🇻🇪 GeoVZLA Pro")
-st.markdown("### Transformación de Coordenadas de Alta Precisión")
-
-# Menú de opciones
-menu = st.selectbox("Operación a realizar:", 
-    ["Google Maps -> La Canoa (PSAD56)", 
-     "La Canoa -> Google Maps (REGVEN)", 
-     "Obtener UTM desde Google Maps", 
-     "Obtener UTM desde La Canoa"])
-
-# Entrada de datos
-c1, c2 = st.columns(2)
-with c1: lat_input = st.text_input("Latitud (N)", "10.4806")
-with c2: lon_input = st.text_input("Longitud (W)", "-66.9036")
-h_input = st.number_input("Altura Elipsoidal (metros)", value=0.0)
-
-# Lógica al presionar el botón
-if st.button("CALCULAR Y UBICAR"):
-    lt = Geodesia.limpiar_coord(lat_input, 'LAT')
-    ln = Geodesia.limpiar_coord(lon_input, 'LON')
-    
-    if lt and ln:
-        # Variables para el mapa (Siempre usaremos la versión REGVEN para el mapa de Google)
-        lat_mapa, lon_mapa = lt, ln
-        
-        st.divider()
-        st.subheader("📍 Resultados")
-        
-        if menu == "Google Maps -> La Canoa (PSAD56)":
-            r_lat, r_lon, r_h = Geodesia.transformar(lt, ln, h_input, inverso=True)
-            st.success(f"Sistema La Canoa (PSAD56): {r_lat:.8f}, {r_lon:.8f}")
-            # El mapa de la web usa WGS84, así que usamos los originales
-        
-        elif menu == "La Canoa -> Google Maps (REGVEN)":
-            r_lat, r_lon, r_h = Geodesia.transformar(lt, ln, h_input, inverso=False)
-            lat_mapa, lon_mapa = r_lat, r_lon # Actualizamos mapa con el resultado corregido
-            st.success(f"Sistema REGVEN/WGS84: {r_lat:.8f}, {r_lon:.8f}")
-            
-        elif menu == "Obtener UTM desde Google Maps":
-            e, n, z = Geodesia.a_utm(lt, ln)
-            st.info(f"UTM Zona {z}N | Este: {e:,.3f} m | Norte: {n:,.3f} m")
-            
-        else: # La Canoa a UTM
-            m_lat, m_lon, m_h = Geodesia.transformar(lt, ln, h_input, inverso=False)
-            lat_mapa, lon_mapa = m_lat, m_lon
-            e, n, z = Geodesia.a_utm(m_lat, m_lon)
-            st.info(f"UTM Zona {z}N | Este: {e:,.3f} m | Norte: {n:,.3f} m")
-
-        # --- SECCIÓN DEL MAPA ---
-        st.subheader("🗺️ Ubicación en el Mapa")
-        # Creamos un pequeño cuadro de datos para el mapa
-        df_mapa = pd.DataFrame({'lat': [lat_mapa], 'lon': [lon_mapa]})
-        st.map(df_mapa, zoom=14)
-        st.caption("Nota: El mapa utiliza el sistema estándar WGS84 (Google).")
-    else:
-        st.error("Por favor, ingresa coordenadas válidas.")
-
-st.divider()
-st.caption("Ingeniería Geodésica aplicada a Venezuela - Sistema de Referencia PATVEN.")
+# ---
