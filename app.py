@@ -76,7 +76,7 @@ class Geodesia:
         return E, Nort, zone
 
 # --- INTERFAZ DE USUARIO (STREAMLIT) ---
-st.set_page_config(page_title="GeoVZLA Pro", page_icon="📍", layout="wide")
+st.set_page_config(page_title="CALCULADORA ASOGEZ", page_icon="📍", layout="wide")
 
 # Inicializar memoria de sesión
 if 'mapa_lat' not in st.session_state:
@@ -159,4 +159,4 @@ if st.session_state.mapa_lat:
 
     st_folium(m, width="100%", height=500, returned_objects=[])
 
-st.caption("GeoVZLA Pro | Implementación de modelos de transformación Molodensky-Badekas para Venezuela.")
+st.caption("ASOCIACIÓN DE GEOMÁTICA DEL ZULIA | Implementación de modelos de transformación Molodensky-Badekas para Venezuela.")
