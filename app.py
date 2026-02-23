@@ -63,9 +63,9 @@ class Geodesia:
         return E, Nort, zone
 
 # --- INTERFAZ ---
-st.set_page_config(page_title="GeoVZLA Pro", page_icon="🇻🇪")
+st.set_page_config(page_title="CALCULADORA GEODESICA ASOGEZ", page_icon="🇻🇪")
 
-st.title("🇻🇪 GeoVZLA Pro")
+st.title("CALCULADORA GEODESICA ASOGEZ")
 st.markdown("### Transformación con Visualización de Precisión")
 
 menu = st.selectbox("Operación:", 
@@ -101,33 +101,27 @@ if st.button("CALCULAR Y UBICAR PUNTO"):
             r_lat, r_lon, _ = Geodesia.transformar(lt, ln, h_input, inverso=True)
             st.success(f"📍 La Canoa: {r_lat:.8f}, {r_lon:.8f}")
 
-        # --- MAPA CON PIN PROFESIONAL (FOLIUM) ---
+       # --- SECCIÓN DEL MAPA (CORREGIDA) ---
         st.subheader("🗺️ Ubicación Exacta")
         
-        # Crear mapa centrado en el punto
-        m = folium.Map(location=[lat_mapa, lon_mapa], zoom_start=18, control_scale=True)
+        # 1. Crear el objeto mapa
+        m = folium.Map(location=[lat_mapa, lon_mapa], zoom_start=18)
         
-        # Añadir vista de Satélite (Google)
-        google_satellite = folium.TileLayer(
+        # 2. Agregar Satélite de Google
+        folium.TileLayer(
             tiles = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-            attr = 'Google',
+            attr = 'Google Satellite',
             name = 'Satélite',
             overlay = False,
             control = True
         ).add_to(m)
 
-        # Añadir el PIN (Marcador)
+        # 3. Agregar el PIN (marcador pequeño y exacto)
         folium.Marker(
             [lat_mapa, lon_mapa],
-            popup="Punto Calculado",
-            tooltip="Clic para ver detalle",
-            icon=folium.Icon(color='red', icon='info-sign')
+            popup=f"Lat: {lat_mapa:.6f}\nLon: {lon_mapa:.6f}",
+            icon=folium.Icon(color='red', icon='crosshairs', prefix='fa') # Icono de mira telescópica
         ).add_to(m)
 
-        # Mostrar el mapa en la App
-        st_folium(m, width=700, height=450)
-        
-    else:
-        st.error("Coordenadas inválidas.")
-
-st.caption("Desarrollado para Ingeniería Geodésica en Venezuela.")
+        # 4. Mostrar el mapa con una "llave" única (key) para evitar que desaparezca
+        st_folium(m, width=700, height=450, key="mapa_venezuela")
