@@ -62,4 +62,72 @@ class Geodesia:
         Nort = k0 * (M + N * math.tan(l_r) * (A**2/2))
         return E, Nort, zone
 
-# ---
+# --- INTERFAZ ---
+st.set_page_config(page_title="GeoVZLA Pro", page_icon="🇻🇪")
+
+st.title("🇻🇪 GeoVZLA Pro")
+st.markdown("### Transformación con Visualización de Precisión")
+
+menu = st.selectbox("Operación:", 
+    ["Google Maps -> La Canoa (PSAD56)", 
+     "La Canoa -> Google Maps (REGVEN)", 
+     "Obtener UTM desde Google Maps", 
+     "Obtener UTM desde La Canoa"])
+
+c1, c2 = st.columns(2)
+with c1: lat_input = st.text_input("Latitud (N)", "10.4806")
+with c2: lon_input = st.text_input("Longitud (W)", "-66.9036")
+h_input = st.number_input("Altura (m)", value=0.0)
+
+if st.button("CALCULAR Y UBICAR PUNTO"):
+    lt = Geodesia.limpiar_coord(lat_input, 'LAT')
+    ln = Geodesia.limpiar_coord(lon_input, 'LON')
+    
+    if lt and ln:
+        lat_mapa, lon_mapa = lt, ln
+        st.divider()
+        
+        # Lógica de cálculo (resumida para mostrar resultados)
+        if "La Canoa" in menu and "Google" in menu:
+            r_lat, r_lon, r_h = Geodesia.transformar(lt, ln, h_input, inverso=False)
+            lat_mapa, lon_mapa = r_lat, r_lon
+            st.success(f"📍 REGVEN: {r_lat:.8f}, {r_lon:.8f}")
+        elif "UTM" in menu:
+            m_lat, m_lon = (lt, ln) if "Google" in menu else Geodesia.transformar(lt, ln, h_input, inverso=False)[:2]
+            lat_mapa, lon_mapa = m_lat, m_lon
+            e, n, z = Geodesia.a_utm(m_lat, m_lon)
+            st.info(f"📐 UTM Zona {z}N | E: {e:,.3f} | N: {n:,.3f}")
+        else:
+            r_lat, r_lon, _ = Geodesia.transformar(lt, ln, h_input, inverso=True)
+            st.success(f"📍 La Canoa: {r_lat:.8f}, {r_lon:.8f}")
+
+        # --- MAPA CON PIN PROFESIONAL (FOLIUM) ---
+        st.subheader("🗺️ Ubicación Exacta")
+        
+        # Crear mapa centrado en el punto
+        m = folium.Map(location=[lat_mapa, lon_mapa], zoom_start=18, control_scale=True)
+        
+        # Añadir vista de Satélite (Google)
+        google_satellite = folium.TileLayer(
+            tiles = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+            attr = 'Google',
+            name = 'Satélite',
+            overlay = False,
+            control = True
+        ).add_to(m)
+
+        # Añadir el PIN (Marcador)
+        folium.Marker(
+            [lat_mapa, lon_mapa],
+            popup="Punto Calculado",
+            tooltip="Clic para ver detalle",
+            icon=folium.Icon(color='red', icon='info-sign')
+        ).add_to(m)
+
+        # Mostrar el mapa en la App
+        st_folium(m, width=700, height=450)
+        
+    else:
+        st.error("Coordenadas inválidas.")
+
+st.caption("Desarrollado para Ingeniería Geodésica en Venezuela.")
