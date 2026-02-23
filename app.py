@@ -85,7 +85,7 @@ if 'mapa_lat' not in st.session_state:
     st.session_state.res_text = ""
     st.session_state.res_tipo = "success"
 
-st.title("🇻🇪 GeoVZLA Pro")
+st.title("🇻🇪 Calculadora ASOGEZ")
 st.markdown("#### Calculadora Geodésica de Precisión - Sistema PATVEN")
 
 with st.sidebar:
